@@ -88,7 +88,15 @@ end
 (sitp::ScaledInterpolation{T,1}, x::Number, y::Int) where {T} = y == 1 ? sitp(x) : Base.throw_boundserror(sitp, (x, y))
 
 @inline function (itp::ScaledInterpolation{T,N})(x::Vararg{Union{Number,AbstractVector},N}) where {T,N}
-    [itp(i...) for i in Iterators.product(x...)]
+    # The eltype of the args may change the return type
+    Tret = promote_type(T, eltype.(x)...)
+    # Only allow concrete return types
+    Tret = isconcretetype(Tret) ? Tret : T
+    ret = zeros(Tret, shape(x...))
+    for (i, y) in zip(eachindex(ret), Iterators.product(x...))
+        ret[i] = itp(y...)
+    end
+    return ret
 end
 
 @inline function coordslookup(flags, ranges, xs)
